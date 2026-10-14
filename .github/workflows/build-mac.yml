@@ -1,0 +1,36 @@
+name: Compilar para Mac
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Compilar VST3 y AU (Apple Silicon + Intel)
+        run: cmake --build build --config Release --target CumbiaGlitch_VST3 CumbiaGlitch_AU -j 4
+
+      - name: Firmar (firma local, sin cuenta de desarrollador)
+        run: |
+          codesign --force --deep --sign - build/CumbiaGlitch_artefacts/Release/VST3/CumbiaGlitch.vst3
+          codesign --force --deep --sign - build/CumbiaGlitch_artefacts/Release/AU/CumbiaGlitch.component
+
+      - name: Empaquetar
+        run: |
+          mkdir -p paquete
+          cp -R build/CumbiaGlitch_artefacts/Release/VST3/CumbiaGlitch.vst3 paquete/
+          cp -R build/CumbiaGlitch_artefacts/Release/AU/CumbiaGlitch.component paquete/
+          cp instalar.command paquete/
+          chmod +x paquete/instalar.command
+
+      - name: Subir el plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: CumbiaGlitch-Mac
+          path: paquete
